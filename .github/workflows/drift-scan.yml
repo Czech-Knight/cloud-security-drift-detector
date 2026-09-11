@@ -46,7 +46,7 @@ jobs:
               raise SystemExit("The protected baseline is invalid; regenerate and review it locally.") from None
           PY
       - name: Obtain short-lived read-only AWS credentials
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
           role-to-assume: ${{ vars.DRIFT_SCANNER_ROLE_ARN }}
           aws-region: ${{ vars.DRIFT_AWS_REGION }}
