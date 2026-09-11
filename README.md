@@ -4,6 +4,81 @@ Terraform defines approved AWS settings. This read-only Python tool reads live S
 
 **Start here: [SETUP_AND_TESTING.md](SETUP_AND_TESTING.md).** It includes WSL and PowerShell setup, exact success checks, deliberate drift, rollback, troubleshooting and teardown. Complete source is in this repository.
 
+
+## Demo evidence
+
+The screenshots below are from the validated project workflow: establish a clean live AWS baseline, introduce a controlled out-of-band security change, detect it, inspect it in the local web interface, restore the approved Terraform state, and verify the project tests.
+
+### Live AWS scan — clean baseline
+
+![Live AWS clean scan](docs/screenshots/01-live-clean.png)
+
+A live scan against the deployed AWS demo environment reports all three monitored resources checked, with no configuration drift and no security findings.
+
+### Controlled drift — public SSH detected
+
+![Live AWS drift detection](docs/screenshots/02-live-drift.png)
+
+The controlled demo adds an unauthorized `0.0.0.0/0` SSH rule to the unattached demonstration security group. The detector identifies the change as `SG_PUBLIC_SSH` with **CRITICAL** severity and shows the expected state, current state, risk explanation and remediation guidance.
+
+### Local web interface — drift investigation
+
+![Cloud Security Drift Detector web interface](docs/screenshots/03-web-drift.png)
+
+The local Flask interface presents scan state, finding severity, resource identity, expected/current values, explanation and remediation without exposing a cloud-facing application.
+
+### Terraform restoration — clean again
+
+![Restored AWS configuration](docs/screenshots/04-restored-clean.png)
+
+After Terraform reconciles the out-of-band change, the same trusted baseline is used again and the scanner returns to a clean state. The baseline is not regenerated to hide the drift.
+
+### Validation and tests
+
+![Project validation tests](docs/screenshots/05-tests.png)
+
+The repository includes Python tests and mocked Terraform tests so core detection, normalization and infrastructure assumptions can be validated without provisioning AWS resources for every test run.
+
+### Demonstrated lifecycle
+
+```text
+       APPROVED TERRAFORM INTENT
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ Trusted Baseline│
+        └────────┬────────┘
+                 │
+                 │ compare
+                 ▼
+        ┌─────────────────┐
+        │    Live AWS     │
+        │  S3 / SG / IAM  │
+        └────────┬────────┘
+                 │
+          ┌──────┴──────┐
+          │             │
+          ▼             ▼
+      CLEAN          OUT-OF-BAND
+      STATE            CHANGE
+                          │
+                          ▼
+                 ┌─────────────────┐
+                 │ Drift Detector  │
+                 │ classify + risk │
+                 └────────┬────────┘
+                          │
+               ┌──────────┴──────────┐
+               ▼                     ▼
+           CLI / JSON             Web UI
+               │
+               ▼
+        Terraform reconcile
+               │
+               ▼
+             CLEAN
+```
+
 ## Quickstart: no AWS account needed
 
 Extract the ZIP and open a terminal inside `cloud-security-drift-detector/`.
