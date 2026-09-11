@@ -1,0 +1,277 @@
+{
+  "aws_account_id": "123456789012",
+  "aws_region": "ap-southeast-2",
+  "mode": "offline-demo",
+  "scanned_at": "2026-09-09T00:00:00+00:00",
+  "resources_selected": 3,
+  "resources_checked": 3,
+  "findings": [
+    {
+      "rule_id": "IAM_ADMIN_POLICY_ATTACHED",
+      "resource_type": "iam_role",
+      "resource_id": "security-drift-demo-role",
+      "resource_arn": "arn:aws:iam::123456789012:role/security-drift-demo-role",
+      "title": "AdministratorAccess attached to demo role",
+      "severity": "CRITICAL",
+      "expected": [],
+      "actual": {
+        "arn:aws:iam::aws:policy/AdministratorAccess": {
+          "Statement": [
+            {
+              "Action": [
+                "*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "explanation": "The role gained AWS AdministratorAccess. This permits all actions and resources within effective account controls; SCPs, boundaries and explicit denies may still limit access.",
+      "remediation": "Detach AdministratorAccess from this demo role and restore the approved attachments. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    },
+    {
+      "rule_id": "SG_PUBLIC_SSH",
+      "resource_type": "security_group",
+      "resource_id": "sg-0123456789abcdef0",
+      "resource_arn": "arn:aws:ec2:ap-southeast-2:123456789012:security-group/sg-0123456789abcdef0",
+      "title": "Security group permits public SSH",
+      "severity": "CRITICAL",
+      "expected": [
+        {
+          "from_port": 22,
+          "protocol": "tcp",
+          "source": "203.0.113.10/32",
+          "source_type": "ipv4",
+          "to_port": 22
+        },
+        {
+          "from_port": 443,
+          "protocol": "tcp",
+          "source": "0.0.0.0/0",
+          "source_type": "ipv4",
+          "to_port": 443
+        }
+      ],
+      "actual": {
+        "from_port": 22,
+        "protocol": "tcp",
+        "source": "0.0.0.0/0",
+        "source_type": "ipv4",
+        "to_port": 22
+      },
+      "explanation": "The new rule permits TCP/22 from the entire internet, increasing exposure to password attacks, stolen credentials and exploitable SSH services. Actual reachability also needs an attached workload, routing and a listening service; this demo SG is unattached.",
+      "remediation": "Remove the public SSH rule or restore the trusted administrator CIDR. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    },
+    {
+      "rule_id": "S3_PUBLIC_ACCESS_BLOCK_DISABLED",
+      "resource_type": "s3",
+      "resource_id": "security-drift-demo-example",
+      "resource_arn": "arn:aws:s3:::security-drift-demo-example",
+      "title": "S3 public access protection was weakened",
+      "severity": "HIGH",
+      "expected": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": true,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      },
+      "actual": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": false,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      },
+      "explanation": "One or more bucket-level public access guardrails changed from enabled to disabled. This increases the chance that a later policy or ACL change exposes data. It does not alone prove public reachability; account-level controls may still block access.",
+      "remediation": "Re-enable the expected Block Public Access settings and review the bucket policy and ACL. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    },
+    {
+      "rule_id": "IAM_PRIVILEGE_ESCALATION_RISK",
+      "resource_type": "iam_role",
+      "resource_id": "security-drift-demo-role",
+      "resource_arn": "arn:aws:iam::123456789012:role/security-drift-demo-role",
+      "title": "Potential IAM privilege escalation permissions",
+      "severity": "HIGH",
+      "expected": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "document": {}
+      },
+      "actual": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "statement": {
+          "Action": [
+            "*"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+            "*"
+          ]
+        }
+      },
+      "explanation": "New permissions include policy/trust mutation, or role passing with workload creation, or broad AssumeRole. These can support escalation when combined with a usable target role or other permissions. This heuristic does not prove an exploitable path.",
+      "remediation": "Remove unnecessary IAM mutation/role delegation permissions; constrain role ARNs, iam:PassedToService and trust conditions where applicable. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    },
+    {
+      "rule_id": "IAM_WILDCARD_ACTION",
+      "resource_type": "iam_role",
+      "resource_id": "security-drift-demo-role",
+      "resource_arn": "arn:aws:iam::123456789012:role/security-drift-demo-role",
+      "title": "IAM action scope broadened with a wildcard",
+      "severity": "HIGH",
+      "expected": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "document": {}
+      },
+      "actual": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "statement": {
+          "Action": [
+            "*"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+            "*"
+          ]
+        }
+      },
+      "explanation": "An added Allow statement contains a wildcard action. Action:* includes every action within its resource and condition scope; service wildcards can also include future service operations.",
+      "remediation": "Replace wildcard actions with the minimum explicit actions needed. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    },
+    {
+      "rule_id": "IAM_WILDCARD_RESOURCE",
+      "resource_type": "iam_role",
+      "resource_id": "security-drift-demo-role",
+      "resource_arn": "arn:aws:iam::123456789012:role/security-drift-demo-role",
+      "title": "IAM Allow statement uses broad resources",
+      "severity": "HIGH",
+      "expected": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "document": {}
+      },
+      "actual": {
+        "policy": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "statement": {
+          "Action": [
+            "*"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+            "*"
+          ]
+        }
+      },
+      "explanation": "An added Allow statement uses wildcard resource scope for actions not all recognized as inherently unscopable reads by this tool. Conditions and IAM resource-level support must be reviewed before deciding effective exposure.",
+      "remediation": "Use specific ARNs where supported and restrictive conditions where resource-level permissions are unavailable. Review terraform -chdir=terraform plan, then run terraform -chdir=terraform apply. Rescan after AWS propagation.",
+      "cloudtrail_events": []
+    }
+  ],
+  "changes": [
+    {
+      "resource_type": "s3",
+      "resource_id": "security-drift-demo-example",
+      "property": "public_access_block",
+      "expected": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": true,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      },
+      "actual": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": false,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      }
+    },
+    {
+      "resource_type": "security_group",
+      "resource_id": "sg-0123456789abcdef0",
+      "property": "ingress",
+      "expected": [
+        {
+          "from_port": 22,
+          "protocol": "tcp",
+          "source": "203.0.113.10/32",
+          "source_type": "ipv4",
+          "to_port": 22
+        },
+        {
+          "from_port": 443,
+          "protocol": "tcp",
+          "source": "0.0.0.0/0",
+          "source_type": "ipv4",
+          "to_port": 443
+        }
+      ],
+      "actual": [
+        {
+          "from_port": 22,
+          "protocol": "tcp",
+          "source": "0.0.0.0/0",
+          "source_type": "ipv4",
+          "to_port": 22
+        },
+        {
+          "from_port": 22,
+          "protocol": "tcp",
+          "source": "203.0.113.10/32",
+          "source_type": "ipv4",
+          "to_port": 22
+        },
+        {
+          "from_port": 443,
+          "protocol": "tcp",
+          "source": "0.0.0.0/0",
+          "source_type": "ipv4",
+          "to_port": 443
+        }
+      ]
+    },
+    {
+      "resource_type": "iam_role",
+      "resource_id": "security-drift-demo-role",
+      "property": "attached_policies",
+      "expected": {},
+      "actual": {
+        "arn:aws:iam::aws:policy/AdministratorAccess": {
+          "Statement": [
+            {
+              "Action": [
+                "*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "schema_version": 1,
+  "summary": {
+    "status": "drift",
+    "resources_selected": 3,
+    "resources_checked": 3,
+    "configuration_drift": 3,
+    "findings": 6,
+    "errors": 0,
+    "info": 0,
+    "low": 0,
+    "medium": 0,
+    "high": 4,
+    "critical": 2
+  }
+}

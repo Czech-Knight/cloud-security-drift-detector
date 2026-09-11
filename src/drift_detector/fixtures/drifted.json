@@ -1,0 +1,109 @@
+{
+  "s3:security-drift-demo-example": {
+    "public_access_block": {
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true,
+      "BlockPublicPolicy": false,
+      "RestrictPublicBuckets": true
+    },
+    "policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::security-drift-demo-example",
+            "arn:aws:s3:::security-drift-demo-example/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    },
+    "policy_public": false,
+    "acl": [
+      {
+        "grantee": "$OWNER",
+        "permission": "FULL_CONTROL"
+      }
+    ],
+    "ownership": "BucketOwnerEnforced",
+    "encryption": {
+      "algorithm": "AES256",
+      "kms_key_id": null,
+      "bucket_key_enabled": false
+    },
+    "versioning": "Enabled"
+  },
+  "security_group:sg-0123456789abcdef0": {
+    "ingress": [
+      {
+        "protocol": "tcp",
+        "from_port": 22,
+        "to_port": 22,
+        "source_type": "ipv4",
+        "source": "203.0.113.10/32"
+      },
+      {
+        "protocol": "tcp",
+        "from_port": 443,
+        "to_port": 443,
+        "source_type": "ipv4",
+        "source": "0.0.0.0/0"
+      },
+      {
+        "protocol": "tcp",
+        "from_port": 22,
+        "to_port": 22,
+        "source_type": "ipv4",
+        "source": "0.0.0.0/0"
+      }
+    ],
+    "egress": []
+  },
+  "iam_role:security-drift-demo-role": {
+    "trust_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": "sts:AssumeRole",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "inline_policies": {
+      "DemoBucketRead": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::security-drift-demo-example"
+          }
+        ]
+      }
+    },
+    "attached_policies": {
+      "arn:aws:iam::aws:policy/AdministratorAccess": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": "*",
+            "Resource": "*"
+          }
+        ]
+      }
+    }
+  }
+}

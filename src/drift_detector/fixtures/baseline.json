@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-09T00:00:00+00:00",
+  "aws_account_id": "123456789012",
+  "aws_region": "ap-southeast-2",
+  "terraform_workspace": "default",
+  "source": "terraform-output",
+  "cloudtrail_enabled": false,
+  "resources": [
+    {
+      "type": "s3",
+      "id": "security-drift-demo-example",
+      "arn": "arn:aws:s3:::security-drift-demo-example",
+      "expected": {
+        "public_access_block": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true,
+          "BlockPublicPolicy": true,
+          "RestrictPublicBuckets": true
+        },
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                "arn:aws:s3:::security-drift-demo-example",
+                "arn:aws:s3:::security-drift-demo-example/*"
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        },
+        "policy_public": false,
+        "acl": [
+          {
+            "grantee": "$OWNER",
+            "permission": "FULL_CONTROL"
+          }
+        ],
+        "ownership": "BucketOwnerEnforced",
+        "encryption": {
+          "algorithm": "AES256",
+          "kms_key_id": null,
+          "bucket_key_enabled": false
+        },
+        "versioning": "Enabled"
+      }
+    },
+    {
+      "type": "security_group",
+      "id": "sg-0123456789abcdef0",
+      "arn": "arn:aws:ec2:ap-southeast-2:123456789012:security-group/sg-0123456789abcdef0",
+      "expected": {
+        "ingress": [
+          {
+            "protocol": "tcp",
+            "from_port": 22,
+            "to_port": 22,
+            "source_type": "ipv4",
+            "source": "203.0.113.10/32"
+          },
+          {
+            "protocol": "tcp",
+            "from_port": 443,
+            "to_port": 443,
+            "source_type": "ipv4",
+            "source": "0.0.0.0/0"
+          }
+        ],
+        "egress": []
+      }
+    },
+    {
+      "type": "iam_role",
+      "id": "security-drift-demo-role",
+      "arn": "arn:aws:iam::123456789012:role/security-drift-demo-role",
+      "expected": {
+        "trust_policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "sts:AssumeRole",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "inline_policies": {
+          "DemoBucketRead": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:ListBucket"
+                ],
+                "Resource": "arn:aws:s3:::security-drift-demo-example"
+              }
+            ]
+          }
+        },
+        "attached_policies": {}
+      }
+    }
+  ]
+}

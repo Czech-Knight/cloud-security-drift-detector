@@ -1,0 +1,83 @@
+name: Live security drift scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *' # UTC; 17 past the hour avoids common top-of-hour congestion.
+permissions:
+  contents: read
+jobs:
+  scan:
+    if: vars.DRIFT_SCAN_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: drift-scan
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: live-drift-scan
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install .
+      - name: Materialize reviewed baseline from protected environment secret
+        env:
+          BASELINE_JSON: ${{ secrets.DRIFT_BASELINE_JSON }}
+          ROLE_ARN: ${{ vars.DRIFT_SCANNER_ROLE_ARN }}
+          REGION: ${{ vars.DRIFT_AWS_REGION }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from drift_detector.baseline.loader import load_baseline
+          if not all(os.environ.get(k) for k in ('BASELINE_JSON', 'ROLE_ARN', 'REGION')):
+              raise SystemExit('Configure DRIFT_BASELINE_JSON, DRIFT_SCANNER_ROLE_ARN and DRIFT_AWS_REGION first.')
+          path = Path('.baseline/security_baseline.json')
+          path.parent.mkdir(mode=0o700, exist_ok=True)
+          path.write_text(os.environ['BASELINE_JSON'], encoding='utf-8')
+          path.chmod(0o600)
+          try:
+              load_baseline(path)
+          except Exception:
+              raise SystemExit("The protected baseline is invalid; regenerate and review it locally.") from None
+          PY
+      - name: Obtain short-lived read-only AWS credentials
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.DRIFT_SCANNER_ROLE_ARN }}
+          aws-region: ${{ vars.DRIFT_AWS_REGION }}
+          role-session-name: drift-scan-${{ github.run_id }}
+          mask-aws-account-id: true
+      - name: Scan and retain actual exit status
+        id: detector
+        env:
+          FAIL_ON: ${{ vars.DRIFT_FAIL_ON || 'HIGH' }}
+          DRIFT_AWS_REGION: ${{ vars.DRIFT_AWS_REGION }}
+        shell: bash
+        run: |
+          set +e
+          python -m drift_detector scan --format json --fail-on "$FAIL_ON" --output reports/drift-report.json > /dev/null
+          detector_status=$?
+          set -e
+          echo "exit_code=$detector_status" >> "$GITHUB_OUTPUT"
+      - name: Archive report (contains resource metadata)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: drift-report-${{ github.run_id }}
+          path: reports/drift-report.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Apply severity / incomplete-scan gate
+        if: always() && steps.detector.outputs.exit_code != ''
+        env:
+          DETECTOR_STATUS: ${{ steps.detector.outputs.exit_code }}
+        shell: bash
+        run: exit "$DETECTOR_STATUS"
+      - name: Remove local baseline
+        if: always()
+        run: rm -f .baseline/security_baseline.json

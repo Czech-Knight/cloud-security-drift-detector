@@ -1,0 +1,14 @@
+include README.md LICENSE pyproject.toml Makefile SETUP_AND_TESTING.md VALIDATION.md PROJECT_FILES.md
+include .gitignore .env.example
+include terraform/.terraform.lock.hcl
+recursive-include src/drift_detector *.py *.json *.html *.css
+recursive-include tests *.py
+recursive-include terraform *.tf *.example *.tftest.hcl
+recursive-include docs *.md
+recursive-include examples *.json
+recursive-include scripts *.py *.sh
+recursive-include .github *.yml
+prune terraform/.terraform
+prune .baseline
+prune reports
+global-exclude __pycache__ *.py[cod] *.tfstate *.tfstate.*

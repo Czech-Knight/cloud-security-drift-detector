@@ -1,0 +1,7 @@
+aws_region         = "ap-southeast-2"
+project_name       = "security-drift-demo"
+trusted_admin_cidr = null
+allow_public_https = false
+enable_cloudtrail  = false
+# For an explicit trusted SSH rule, use YOUR narrow CIDR, e.g. "203.0.113.10/32".
+# That example is a documentation address, not your real IP.

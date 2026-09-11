@@ -1,0 +1,26 @@
+{
+  "aws_account_id": "123456789012",
+  "aws_region": "ap-southeast-2",
+  "mode": "offline-demo",
+  "scanned_at": "2026-09-09T00:00:00+00:00",
+  "resources_selected": 3,
+  "resources_checked": 3,
+  "findings": [],
+  "changes": [],
+  "errors": [],
+  "warnings": [],
+  "schema_version": 1,
+  "summary": {
+    "status": "clean",
+    "resources_selected": 3,
+    "resources_checked": 3,
+    "configuration_drift": 0,
+    "findings": 0,
+    "errors": 0,
+    "info": 0,
+    "low": 0,
+    "medium": 0,
+    "high": 0,
+    "critical": 0
+  }
+}

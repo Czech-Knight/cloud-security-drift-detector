@@ -1,0 +1,22 @@
+name: Terraform validation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: '1.9.8'
+          terraform_wrapper: false
+      - run: terraform -chdir=terraform fmt -check -recursive
+      - run: terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=terraform validate
+      - run: terraform -chdir=terraform test
+      # Mock-provider plans above require no AWS access. Live plan/apply stays local,
+      # where the real Terraform state is present and the operator reviews changes.
