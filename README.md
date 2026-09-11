@@ -293,18 +293,4 @@ terraform -chdir=terraform destroy
 
 Keep the bucket empty. `force_destroy=false` deliberately prevents silently deleting object versions. If data was added, review and delete **all versions and delete markers** using the console before retrying. Separate OIDC scanner roles created from the optional guide need separate cleanup. Disable the scheduled scan before destroying resources.
 
-## Interview talking points
-
-1. **What is different from Terraform plan?** Security severity, risk explanation and resource-specific findings layered over a trusted infrastructure contract.
-2. **Why not snapshot live AWS as the baseline?** It could approve an already unauthorized change; this tool exports intended configuration and verifies it against live reads.
-3. **Why normalize policies?** AWS ordering/scalar representations can differ without changing access semantics.
-4. **How is missing permission handled?** As incomplete coverage and exit 2, never as a missing setting or a clean scan.
-5. **How does rollback remove extra permissions?** Exclusive SG and IAM policy-set ownership makes Terraform reconcile unapproved additions.
-6. **What does CRITICAL public SSH mean here?** The control permits public traffic; reachability needs a workload and routing, and the demonstration group remains unattached.
-7. **Why OIDC?** A narrowly trusted repository environment receives short-lived scanner credentials without committed access keys.
-8. **Does CloudTrail prove who caused drift?** No; it supplies bounded, potentially related management-event context.
-9. **What would you add next?** Signed/versioned baselines, clearer semantic policy diffs, permission-boundary/SCP context and more reviewed service collectors.
-
-Suggested repository description: “Read-only AWS security drift detection against Terraform intent, with deterministic risk explanations, a local demo and OIDC scanning.” Suggested topics: `aws`, `cloud-security`, `terraform`, `python`, `iam`, `devsecops`, `drift-detection`.
-
 MIT licensed. Full file inventory: [PROJECT_FILES.md](PROJECT_FILES.md).
