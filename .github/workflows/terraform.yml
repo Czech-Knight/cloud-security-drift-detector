@@ -18,5 +18,13 @@ jobs:
       - run: terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
       - run: terraform -chdir=terraform validate
       - run: terraform -chdir=terraform test
+      - name: Check enterprise event transport modules
+        run: |
+          terraform -chdir=deploy/event-hub fmt -check -diff
+          terraform -chdir=deploy/event-forwarder fmt -check -diff
+          for module in deploy/event-hub deploy/event-forwarder; do
+            terraform -chdir="$module" init -backend=false -input=false
+            terraform -chdir="$module" validate
+          done
       # Mock-provider plans above require no AWS access. Live plan/apply stays local,
       # where the real Terraform state is present and the operator reviews changes.
