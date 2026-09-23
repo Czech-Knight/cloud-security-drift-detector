@@ -59,6 +59,39 @@ def parser():
         if name == "serve":
             cmd.add_argument("--demo", action="store_true", help="Use offline fixtures only")
             cmd.add_argument("--port", type=int, default=8787)
+    fleet = commands.add_parser("fleet", help="Scan reviewed baselines in multiple AWS accounts")
+    fleet.add_argument("--inventory", required=True)
+    fleet.add_argument("--profile")
+    fleet.add_argument("--resource", choices=("s3", "security_group", "iam_role"))
+    fleet.add_argument("--fail-on", type=str.upper, choices=SEVERITIES, default="HIGH")
+    fleet.add_argument("--cloudtrail", action=argparse.BooleanOptionalAction, default=None)
+    fleet.add_argument("--output")
+    fleet.add_argument("--debug", action="store_true")
+
+    events = commands.add_parser("events", help="Scan on EventBridge-to-SQS CloudTrail write events")
+    events.add_argument("--inventory", required=True)
+    events.add_argument("--queue-url", required=True)
+    events.add_argument("--profile")
+    events.add_argument("--fail-on", type=str.upper, choices=SEVERITIES, default="HIGH")
+    events.add_argument("--once", action="store_true", help="Poll one SQS batch, then exit")
+    events.add_argument("--poll-seconds", type=int, default=20)
+    events.add_argument("--debug", action="store_true")
+
+    remediation = commands.add_parser("remediate", help="Review and apply a saved Terraform plan")
+    steps = remediation.add_subparsers(dest="remediation_step", required=True)
+    for step in ("plan", "apply"):
+        command = steps.add_parser(step)
+        command.add_argument("--baseline", default=default_baseline())
+        command.add_argument("--terraform-dir", default="terraform")
+        command.add_argument("--plan-path", default=".remediation/reconcile.tfplan")
+        command.add_argument("--profile")
+        command.add_argument("--debug", action="store_true")
+        if step == "apply":
+            command.add_argument("--approved-plan-sha256", required=True)
+            command.add_argument("--approval-ticket", required=True)
+            command.add_argument("--approved-by", required=True)
+            command.add_argument("--confirm-apply", action="store_true", required=True)
+
     return root
 
 
@@ -69,6 +102,47 @@ def main(argv=None):
     for name in ("botocore", "boto3", "urllib3"):
         logging.getLogger(name).setLevel(logging.WARNING)
     try:
+        if args.command in {"fleet", "events"}:
+            from drift_detector.fleet import load_inventory, scan_fleet
+
+            inventory, directory = load_inventory(args.inventory)
+            if args.command == "events":
+                from drift_detector.events import poll_events
+
+                if not 0 <= args.poll_seconds <= 20:
+                    raise DetectorError("SQS poll seconds must be between 0 and 20")
+                return poll_events(
+                    inventory, directory, args.queue_url, args.profile,
+                    args.fail_on, args.once, args.poll_seconds,
+                )
+            result = scan_fleet(
+                inventory, directory, args.profile, args.resource,
+                args.cloudtrail, args.fail_on,
+            )
+            serialized = json.dumps(result, indent=2)
+            if args.output:
+                path = Path(args.output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(serialized + "\n", encoding="utf-8")
+            print(serialized)
+            return result["summary"]["exit_code"]
+        if args.command == "remediate":
+            from drift_detector.remediation import apply_approved_plan, plan_reconciliation
+
+            if args.remediation_step == "plan":
+                result = plan_reconciliation(
+                    args.baseline, args.terraform_dir, args.plan_path, args.profile
+                )
+            else:
+                if not args.confirm_apply:
+                    raise DetectorError("Explicit --confirm-apply is required")
+                result = apply_approved_plan(
+                    args.baseline, args.terraform_dir, args.plan_path,
+                    args.approved_plan_sha256, args.approval_ticket,
+                    args.approved_by, args.profile,
+                )
+            print(json.dumps(result, indent=2))
+            return 0
         if args.command == "baseline":
             if Path(args.baseline).exists() and not args.force:
                 raise DetectorError(
