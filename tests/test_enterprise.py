@@ -23,6 +23,15 @@ def _target(account="123456789012", region="ap-southeast-2"):
     )
 
 
+def _planned_scope(baseline):
+    value = {
+        "aws_account_id": baseline.aws_account_id,
+        "aws_region": baseline.aws_region,
+        "terraform_workspace": baseline.terraform_workspace,
+    }
+    return json.dumps({"planned_values": {"outputs": {"security_baseline": {"value": value}}}})
+
+
 def test_fleet_validates_target_identity_and_duplicate_regions(tmp_path, baseline):
     save_baseline(baseline, tmp_path / "approved.json")
     wrong = _target(account="999999999999")
@@ -146,11 +155,7 @@ def test_plan_and_apply_require_exact_reviewed_bytes(tmp_path, baseline, monkeyp
     def terraform(arguments, _timeout):
         commands.append(arguments)
         if "show" in arguments:
-            return json.dumps({"planned_values": {"outputs": {"security_baseline": {"value": {
-                "aws_account_id": baseline.aws_account_id,
-                "aws_region": baseline.aws_region,
-                "terraform_workspace": baseline.terraform_workspace,
-            }}}}})
+            return _planned_scope(baseline)
         for argument in arguments:
             if argument.startswith("-out="):
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -186,13 +191,10 @@ def test_apply_failure_does_not_rebaseline(tmp_path, baseline, monkeypatch):
     plan = tmp_path / "file.tfplan"
     plan.write_bytes(b"plan")
     monkeypatch.setattr("drift_detector.remediation._verify_context", lambda *_args: None)
+
     def terraform(arguments, _timeout):
         if "show" in arguments:
-            return json.dumps({"planned_values": {"outputs": {"security_baseline": {"value": {
-                "aws_account_id": baseline.aws_account_id,
-                "aws_region": baseline.aws_region,
-                "terraform_workspace": baseline.terraform_workspace,
-            }}}}})
+            return _planned_scope(baseline)
         return ""
 
     monkeypatch.setattr("drift_detector.remediation._run", terraform)
