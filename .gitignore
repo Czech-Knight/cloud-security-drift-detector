@@ -16,6 +16,7 @@ htmlcov/
 *.tfplan
 crash.log
 .baseline/
+.remediation/
 reports/
 dist/
 build/
