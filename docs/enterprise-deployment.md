@@ -58,9 +58,9 @@ For a one-batch smoke test use --once --poll-seconds 0. Each trigger prints a JS
 **Nothing in fleet scan or the SQS worker calls Terraform apply.** Use the provisioner identity and original state/workspace, not the central scanner identity. The approval must come from your organization's **external** change system or protected CI environment, with an independently reviewed plan. The CLI records an approver/ticket string but does not authenticate the approver or itself enforce two-person authorization.
 
     python -m drift_detector remediate plan --baseline .baseline/security_baseline.json --terraform-dir terraform --plan-path .remediation/reconcile.tfplan
-    terraform -chdir=terraform show .remediation/reconcile.tfplan
+    terraform show .remediation/reconcile.tfplan
 
-Review the entire plan, including any unrelated updates/destroys. The command refuses to overwrite an existing saved plan and prints its SHA-256 and account/region/workspace. Obtain external approval for that **exact** plan checksum, then explicitly execute:
+Review the entire plan, including any unrelated updates/destroys. The command refuses to overwrite an existing saved plan and prints its SHA-256 and account/region/workspace. Run terraform show on the exact saved plan before approval; terraform show does not need a working-directory switch when the plan path is given from the repository root. Obtain external approval for that **exact** plan checksum, then explicitly execute:
 
     python -m drift_detector remediate apply --baseline .baseline/security_baseline.json --terraform-dir terraform --plan-path .remediation/reconcile.tfplan --approved-plan-sha256 APPROVED_64_HEX_DIGEST --approval-ticket CHG-1234 --approved-by REVIEWER_ID --confirm-apply
 
