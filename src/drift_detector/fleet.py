@@ -72,7 +72,9 @@ def scan_target(target: Target, root: Path, profile=None, resource_type=None, cl
     arguments = {"RoleArn": target.role_arn, "RoleSessionName": "drift-detector-scan"}
     if target.external_id is not None:
         arguments["ExternalId"] = target.external_id
-    credentials = session.client("sts", config=CLIENT_CONFIG).assume_role(**arguments)["Credentials"]
+    credentials = session.client("sts", config=CLIENT_CONFIG).assume_role(**arguments)[
+        "Credentials"
+    ]
     assumed = boto3.Session(
         aws_access_key_id=credentials["AccessKeyId"],
         aws_secret_access_key=credentials["SecretAccessKey"],
