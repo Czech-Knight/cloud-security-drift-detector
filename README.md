@@ -1,6 +1,6 @@
 # Cloud Security Drift Detector
 
-Terraform defines approved AWS settings. This read-only Python tool reads live S3, security group and IAM role configuration, compares it with a trusted Terraform-derived baseline, and explains the security risk of out-of-band changes. Findings include expected/current values, resource identity, severity and remediation. Optional CloudTrail activity supplies context without claiming causation.
+Terraform defines approved AWS settings. The read-only detector reads live S3, security group and IAM role configuration, compares it with a trusted Terraform-derived baseline, and explains the security risk of out-of-band changes. Optional enterprise commands add cross-account scanning, event-triggered investigation and explicitly approved Terraform reconciliation; the detector and event worker themselves never modify AWS. Findings include expected/current values, resource identity, severity and remediation. Optional CloudTrail activity supplies context without claiming causation.
 
 **Start here: [SETUP_AND_TESTING.md](SETUP_AND_TESTING.md).** It includes WSL and PowerShell setup, exact success checks, deliberate drift, rollback, troubleshooting and teardown. Complete source is in this repository.
 
@@ -78,6 +78,24 @@ The repository includes Python tests and mocked Terraform tests so core detectio
                ▼
              CLEAN
 ```
+
+## Enterprise upgrade: multi-account, event-triggered drift response
+
+A central worker can **assume a separate read-only role** in each approved AWS account, verify each account/region against its **own reviewed Terraform baseline**, and return one consolidated JSON report. An optional EventBridge → SQS worker triggers a fresh account scan after supported CloudTrail write events; retries/incomplete reads are sent through SQS's dead-letter mechanism instead of being reported clean. This provides near-real-time investigation, **not guaranteed instant or exhaustive coverage**. Keep scheduled full scans as a backstop.
+
+**Remediation is a separate, explicit operation:** prepare a saved Terraform plan against the approved workspace, get external human change approval for its SHA-256, then apply those exact bytes with approval ticket/approver metadata and verify live AWS against the unchanged baseline. The CLI checks the plan hash and operator's approval attestation; it **cannot verify an independent approver**—enforce that in your organization's protected CI/change-management process. There is no automatic apply from findings or SQS events.
+
+Quick command reference (replace placeholders with your account/region, reviewed baseline paths, deployed EventBridge/SQS hub, and authorized roles):
+
+```bash
+python -m drift_detector fleet --inventory .baseline/fleet.json --fail-on HIGH --output reports/fleet.json
+python -m drift_detector events --inventory .baseline/fleet.json --queue-url YOUR_HUB_QUEUE_URL --once
+python -m drift_detector remediate plan --baseline .baseline/security_baseline.json --terraform-dir terraform
+# Obtain independent approval of the printed plan checksum after inspecting terraform show output.
+python -m drift_detector remediate apply --baseline .baseline/security_baseline.json --terraform-dir terraform --approved-plan-sha256 APPROVED_SHA256 --approval-ticket CHG-1234 --approved-by REVIEWER_ID --confirm-apply
+```
+
+**[Enterprise setup, architecture, IAM boundaries, Terraform event infrastructure and limitations](docs/enterprise-deployment.md)**. Example infrastructure: [central EventBridge/SQS hub](deploy/event-hub/main.tf), [per-account/region forwarder](deploy/event-forwarder/main.tf), [inventory schema](examples/fleet-inventory.example.json). No real AWS resources or external approval system are provisioned until you deploy and configure them.
 
 ## Quickstart: no AWS account needed
 
@@ -256,7 +274,8 @@ Attach that policy to a **separate scanner identity**, not the monitored demo ro
 
 - `ci.yml`: lint, format, Python tests, wheel build and installed-wheel demo; no AWS credentials.
 - `terraform.yml`: format, initialization, validation and mock-provider Terraform plans; no real apply.
-- `drift-scan.yml`: opt-in scheduled/manual real scan using OIDC, a protected baseline secret, JSON artifact and configurable failure threshold. No deployment and no baseline regeneration.
+- `drift-scan.yml`: opt-in scheduled/manual **single-account** real scan using OIDC, a protected baseline secret, JSON artifact and configurable failure threshold. No deployment and no baseline regeneration.
+- `fleet` / `events`: opt-in central multi-account scans and EventBridge-to-SQS worker; deploy the separate example infrastructure and configure each target role/baseline before use.
 
 [GitHub Actions and OIDC setup](docs/github-actions.md) provides exact configuration, identity separation and baseline persistence. Workflow actions are pinned to immutable SHAs. Monthly Dependabot checks propose reviewed updates.
 
@@ -276,7 +295,7 @@ Python tests use botocore Stubber and explicit fixtures; they do not require AWS
 
 ## Security considerations and limitations
 
-This is a scoped drift detector, not a GuardDuty replacement, CSPM platform, SIEM, vulnerability scanner or runtime intrusion detector. [Threat model](docs/threat-model.md) documents trust boundaries.
+This is a scoped drift detector, even with the opt-in enterprise extensions, not a GuardDuty replacement, CSPM platform, SIEM, vulnerability scanner or runtime intrusion detector. [Threat model](docs/threat-model.md) documents trust boundaries.
 
 It evaluates bucket-level settings, not every object ACL, access point or account-wide control. Modern S3 automatically encrypts new uploads with SSE-S3; missing encryption configuration does not prove plaintext storage. A KMS policy change concerns key control, and default encryption does not describe every historical object. [AWS encryption FAQ](https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-encryption-faq.html)
 
