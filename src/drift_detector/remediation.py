@@ -1,6 +1,8 @@
 """Explicit, hash-bound Terraform reconciliation; never invoked by the scan or event worker."""
 
 import hashlib
+import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -32,6 +34,15 @@ def _run(arguments, timeout):
 
 
 def _verify_context(baseline, terraform_dir, profile):
+    if profile is not None and (
+        os.getenv("AWS_PROFILE") != profile
+        or any(os.getenv(key) for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"))
+    ):
+        raise DetectorError(
+            "Set AWS_PROFILE to the chosen provisioner profile and unset static/temporary AWS "
+            "credential environment variables before Terraform; CLI --profile alone does not "
+            "select Terraform provider credentials"
+        )
     current = boto3.Session(profile_name=profile, region_name=baseline.aws_region)
     account = current.client("sts").get_caller_identity()["Account"]
     if account != baseline.aws_account_id:
@@ -39,6 +50,23 @@ def _verify_context(baseline, terraform_dir, profile):
     workspace = _run(["terraform", f"-chdir={terraform_dir}", "workspace", "show"], 60).strip()
     if workspace != baseline.terraform_workspace:
         raise DetectorError("Terraform workspace does not match the approved baseline")
+
+
+def _verify_saved_plan_scope(baseline, terraform_dir, plan):
+    """Refuse a saved plan that would switch the monitored account, region or workspace."""
+    try:
+        document = json.loads(
+            _run(["terraform", f"-chdir={terraform_dir}", "show", "-json", str(plan)], 120)
+        )
+        intended = document["planned_values"]["outputs"]["security_baseline"]["value"]
+        if (
+            intended["aws_account_id"] != baseline.aws_account_id
+            or intended["aws_region"] != baseline.aws_region
+            or intended["terraform_workspace"] != baseline.terraform_workspace
+        ):
+            raise DetectorError("Saved plan changes the reviewed AWS account/region/workspace")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise DetectorError("Cannot verify Terraform saved-plan account/region/workspace") from exc
 
 
 def _paths(baseline_path, terraform_dir, plan_path):
@@ -63,6 +91,7 @@ def plan_reconciliation(baseline_path, terraform_dir, plan_path, profile=None):
     if not plan.is_file():
         raise DetectorError("Terraform did not produce the requested plan")
     plan.chmod(0o600)
+    _verify_saved_plan_scope(baseline, directory, plan)
     checksum = hashlib.sha256(plan.read_bytes()).hexdigest()
     return {
         "plan_path": str(plan),
@@ -92,6 +121,7 @@ def apply_approved_plan(
     if not plan.is_file() or hashlib.sha256(plan.read_bytes()).hexdigest() != approved_sha256:
         raise DetectorError("Saved Terraform plan does not match the approved SHA-256")
     _verify_context(baseline, directory, profile)
+    _verify_saved_plan_scope(baseline, directory, plan)
     _run(["terraform", f"-chdir={directory}", "apply", "-input=false", str(plan)], 900)
     # Never rebaseline as remediation; a post-apply scan must match original intent.
     report = live_scan(baseline_path, profile, baseline.aws_region)
