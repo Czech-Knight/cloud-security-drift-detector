@@ -56,7 +56,7 @@ resource "aws_cloudwatch_event_rule" "writes" {
     source        = ["aws.s3", "aws.ec2", "aws.iam"]
     detail = {
       eventSource = ["s3.amazonaws.com", "ec2.amazonaws.com", "iam.amazonaws.com"]
-      readOnly     = [false]
+      readOnly    = [false]
     }
   })
 }
