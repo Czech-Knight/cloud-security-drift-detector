@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-from copy import deepcopy
 
 import pytest
 from pydantic import ValidationError
@@ -32,7 +31,6 @@ def test_fleet_validates_target_identity_and_duplicate_regions(tmp_path, baselin
     with pytest.raises(ValidationError, match="Duplicate"):
         Inventory(schema_version=1, targets=[_target(), _target()])
     with pytest.raises(ValidationError, match="role ARN"):
-        _target().model_copy(update={"role_arn": "arn:aws:iam::999999999999:role/drift"})
         Target(
             account_id="123456789012",
             region="ap-southeast-2",
