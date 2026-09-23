@@ -14,15 +14,19 @@ The downloadable project contains the complete contents of each file below. Gene
 | [MANIFEST.in](MANIFEST.in) |
 | [Makefile](Makefile) |
 | [PROJECT_FILES.md](PROJECT_FILES.md) |
+| [deploy/event-forwarder/main.tf](deploy/event-forwarder/main.tf) |
+| [deploy/event-hub/main.tf](deploy/event-hub/main.tf) |
 | [README.md](README.md) |
 | [SETUP_AND_TESTING.md](SETUP_AND_TESTING.md) |
 | [VALIDATION.md](VALIDATION.md) |
 | [docs/architecture.md](docs/architecture.md) |
 | [docs/demo.md](docs/demo.md) |
+| [docs/enterprise-deployment.md](docs/enterprise-deployment.md) |
 | [docs/github-actions.md](docs/github-actions.md) |
 | [docs/security-rules.md](docs/security-rules.md) |
 | [docs/threat-model.md](docs/threat-model.md) |
 | [examples/clean-report.json](examples/clean-report.json) |
+| [examples/fleet-inventory.example.json](examples/fleet-inventory.example.json) |
 | [examples/drift-report.json](examples/drift-report.json) |
 | [examples/security-baseline.json](examples/security-baseline.json) |
 | [examples/terraform-output.json](examples/terraform-output.json) |
@@ -49,6 +53,9 @@ The downloadable project contains the complete contents of each file below. Gene
 | [src/drift_detector/cli.py](src/drift_detector/cli.py) |
 | [src/drift_detector/config.py](src/drift_detector/config.py) |
 | [src/drift_detector/demo.py](src/drift_detector/demo.py) |
+| [src/drift_detector/remediation.py](src/drift_detector/remediation.py) |
+| [src/drift_detector/fleet.py](src/drift_detector/fleet.py) |
+| [src/drift_detector/events.py](src/drift_detector/events.py) |
 | [src/drift_detector/engine/__init__.py](src/drift_detector/engine/__init__.py) |
 | [src/drift_detector/engine/comparator.py](src/drift_detector/engine/comparator.py) |
 | [src/drift_detector/engine/scanner.py](src/drift_detector/engine/scanner.py) |
@@ -78,6 +85,7 @@ The downloadable project contains the complete contents of each file below. Gene
 | [terraform/variables.tf](terraform/variables.tf) |
 | [terraform/versions.tf](terraform/versions.tf) |
 | [tests/conftest.py](tests/conftest.py) |
+| [tests/test_enterprise.py](tests/test_enterprise.py) |
 | [tests/test_collectors.py](tests/test_collectors.py) |
 | [tests/test_engine_cli.py](tests/test_engine_cli.py) |
 | [tests/test_rules.py](tests/test_rules.py) |
