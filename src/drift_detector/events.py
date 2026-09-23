@@ -34,9 +34,13 @@ def event_account(body):
     return account
 
 
-def poll_events(inventory, root, queue_url, profile=None, fail_on="HIGH", once=False, wait=20):
+def poll_events(
+    inventory, root, queue_url, profile=None, fail_on="HIGH", once=False, wait=20,
+    queue_region=None,
+):
     """Return a one-shot exit code; retain failed/incomplete messages for SQS retry and DLQ."""
-    queue = boto3.Session(profile_name=profile).client("sqs")
+    session = boto3.Session(profile_name=profile)
+    queue = session.client("sqs", region_name=queue_region) if queue_region else session.client("sqs")
     final_code = 0
     while True:
         try:
