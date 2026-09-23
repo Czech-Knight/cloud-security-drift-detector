@@ -57,23 +57,31 @@ def plan_reconciliation(baseline_path, terraform_dir, plan_path, profile=None):
         raise DetectorError("Refusing to overwrite an existing reviewed/saved plan")
     plan.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     _run(
-        ["terraform", f"-chdir={directory}", "plan", "-input=false",
-         "-lock=true", f"-out={plan}"],
+        ["terraform", f"-chdir={directory}", "plan", "-input=false", "-lock=true", f"-out={plan}"],
         600,
     )
     if not plan.is_file():
         raise DetectorError("Terraform did not produce the requested plan")
     plan.chmod(0o600)
     checksum = hashlib.sha256(plan.read_bytes()).hexdigest()
-    return {"plan_path": str(plan), "plan_sha256": checksum,
-            "review_command": f"terraform -chdir={directory} show {plan}",
-            "account_id": baseline.aws_account_id, "region": baseline.aws_region,
-            "workspace": baseline.terraform_workspace}
+    return {
+        "plan_path": str(plan),
+        "plan_sha256": checksum,
+        "review_command": f"terraform -chdir={directory} show {plan}",
+        "account_id": baseline.aws_account_id,
+        "region": baseline.aws_region,
+        "workspace": baseline.terraform_workspace,
+    }
 
 
 def apply_approved_plan(
-    baseline_path, terraform_dir, plan_path, approved_sha256,
-    approval_ticket, approved_by, profile=None,
+    baseline_path,
+    terraform_dir,
+    plan_path,
+    approved_sha256,
+    approval_ticket,
+    approved_by,
+    profile=None,
 ):
     """Approval is organizational/external: this verifies a plan hash and operator attestation."""
     baseline, directory, plan = _paths(baseline_path, terraform_dir, plan_path)
@@ -92,6 +100,11 @@ def apply_approved_plan(
             "Terraform apply completed, but post-apply drift verification is not clean; "
             "investigate before closing the approval ticket"
         )
-    return {"status": "verified_clean", "account_id": baseline.aws_account_id,
-            "region": baseline.aws_region, "plan_sha256": approved_sha256,
-            "approval_ticket": approval_ticket, "approved_by": approved_by}
+    return {
+        "status": "verified_clean",
+        "account_id": baseline.aws_account_id,
+        "region": baseline.aws_region,
+        "plan_sha256": approved_sha256,
+        "approval_ticket": approval_ticket,
+        "approved_by": approved_by,
+    }
