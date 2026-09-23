@@ -68,7 +68,9 @@ def parser():
     fleet.add_argument("--output")
     fleet.add_argument("--debug", action="store_true")
 
-    events = commands.add_parser("events", help="Scan on EventBridge-to-SQS CloudTrail write events")
+    events = commands.add_parser(
+        "events", help="Scan on EventBridge-to-SQS CloudTrail write events"
+    )
     events.add_argument("--inventory", required=True)
     events.add_argument("--queue-url", required=True)
     events.add_argument("--profile")
@@ -112,12 +114,21 @@ def main(argv=None):
                 if not 0 <= args.poll_seconds <= 20:
                     raise DetectorError("SQS poll seconds must be between 0 and 20")
                 return poll_events(
-                    inventory, directory, args.queue_url, args.profile,
-                    args.fail_on, args.once, args.poll_seconds,
+                    inventory,
+                    directory,
+                    args.queue_url,
+                    args.profile,
+                    args.fail_on,
+                    args.once,
+                    args.poll_seconds,
                 )
             result = scan_fleet(
-                inventory, directory, args.profile, args.resource,
-                args.cloudtrail, args.fail_on,
+                inventory,
+                directory,
+                args.profile,
+                args.resource,
+                args.cloudtrail,
+                args.fail_on,
             )
             serialized = json.dumps(result, indent=2)
             if args.output:
@@ -137,9 +148,13 @@ def main(argv=None):
                 if not args.confirm_apply:
                     raise DetectorError("Explicit --confirm-apply is required")
                 result = apply_approved_plan(
-                    args.baseline, args.terraform_dir, args.plan_path,
-                    args.approved_plan_sha256, args.approval_ticket,
-                    args.approved_by, args.profile,
+                    args.baseline,
+                    args.terraform_dir,
+                    args.plan_path,
+                    args.approved_plan_sha256,
+                    args.approval_ticket,
+                    args.approved_by,
+                    args.profile,
                 )
             print(json.dumps(result, indent=2))
             return 0
