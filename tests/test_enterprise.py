@@ -145,6 +145,12 @@ def test_plan_and_apply_require_exact_reviewed_bytes(tmp_path, baseline, monkeyp
 
     def terraform(arguments, _timeout):
         commands.append(arguments)
+        if "show" in arguments:
+            return json.dumps({"planned_values": {"outputs": {"security_baseline": {"value": {
+                "aws_account_id": baseline.aws_account_id,
+                "aws_region": baseline.aws_region,
+                "terraform_workspace": baseline.terraform_workspace,
+            }}}}})
         for argument in arguments:
             if argument.startswith("-out="):
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,7 +164,7 @@ def test_plan_and_apply_require_exact_reviewed_bytes(tmp_path, baseline, monkeyp
         plan_reconciliation(base, directory, path)
     with pytest.raises(DetectorError, match="does not match"):
         apply_approved_plan(base, directory, path, "0" * 64, "CHG-123", "Reviewer")
-    assert len(commands) == 1
+    assert len(commands) == 2
 
     class CleanReport:
         errors = []
@@ -180,7 +186,16 @@ def test_apply_failure_does_not_rebaseline(tmp_path, baseline, monkeypatch):
     plan = tmp_path / "file.tfplan"
     plan.write_bytes(b"plan")
     monkeypatch.setattr("drift_detector.remediation._verify_context", lambda *_args: None)
-    monkeypatch.setattr("drift_detector.remediation._run", lambda *_args: "")
+    def terraform(arguments, _timeout):
+        if "show" in arguments:
+            return json.dumps({"planned_values": {"outputs": {"security_baseline": {"value": {
+                "aws_account_id": baseline.aws_account_id,
+                "aws_region": baseline.aws_region,
+                "terraform_workspace": baseline.terraform_workspace,
+            }}}}})
+        return ""
+
+    monkeypatch.setattr("drift_detector.remediation._run", terraform)
 
     class Drift:
         errors = []
