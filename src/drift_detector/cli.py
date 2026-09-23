@@ -73,6 +73,7 @@ def parser():
     )
     events.add_argument("--inventory", required=True)
     events.add_argument("--queue-url", required=True)
+    events.add_argument("--queue-region", help="Region hosting the central SQS queue")
     events.add_argument("--profile")
     events.add_argument("--fail-on", type=str.upper, choices=SEVERITIES, default="HIGH")
     events.add_argument("--once", action="store_true", help="Poll one SQS batch, then exit")
@@ -121,6 +122,7 @@ def main(argv=None):
                     args.fail_on,
                     args.once,
                     args.poll_seconds,
+                    args.queue_region,
                 )
             result = scan_fleet(
                 inventory,
