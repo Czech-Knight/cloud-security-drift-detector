@@ -39,12 +39,20 @@ jobs:
           checkov -d terraform --framework terraform -o json > security-reports/checkov.json
           result=$?
           set -e
-          if [ "$result" -ne 0 ]; then
-            echo "Checkov returned $result. Review the report before making this a required check." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Checkov completed without findings." >> "$GITHUB_STEP_SUMMARY"
-          fi
-          echo "This is an advisory baseline; findings do not currently block a merge." >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          data = json.loads(Path('security-reports/checkov.json').read_text())
+          checks = data.get('results') if isinstance(data, dict) else None
+          if not isinstance(checks, dict):
+              raise SystemExit('Checkov did not produce a valid findings report')
+          passed = len(checks.get('passed_checks', []))
+          failed = len(checks.get('failed_checks', []))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write(f'Checkov: {passed} passed, {failed} failed. Review the JSON report artifact.\n')
+              summary.write('Advisory baseline: failed security policies do not currently block merges.\n')
+          PY
       - name: Save security assessment
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
