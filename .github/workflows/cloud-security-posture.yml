@@ -1,0 +1,55 @@
+name: Cloud infrastructure security report
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/cloud-security-posture.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/cloud-security-posture.yml'
+  schedule:
+    - cron: '29 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkov:
+    name: Terraform static security assessment (advisory baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install scanner
+        run: python -m pip install 'checkov==3.3.19'
+      - name: Assess Terraform without AWS credentials
+        shell: bash
+        run: |
+          mkdir -p security-reports
+          set +e
+          checkov -d terraform --framework terraform -o json > security-reports/checkov.json
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            echo "Checkov returned $result. Review the report before making this a required check." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Checkov completed without findings." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "This is an advisory baseline; findings do not currently block a merge." >> "$GITHUB_STEP_SUMMARY"
+      - name: Save security assessment
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cloud-checkov-${{ github.run_id }}
+          path: security-reports/checkov.json
+          retention-days: 14
+          if-no-files-found: warn
