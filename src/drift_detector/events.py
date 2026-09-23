@@ -66,8 +66,11 @@ def poll_events(inventory, root, queue_url, profile=None, fail_on="HIGH", once=F
                 final_code = 2
                 continue
             result = scan_fleet(inventory, root, profile, fail_on=fail_on, targets=targets)
-            print(json.dumps({"trigger": "cloudtrail-event", "event_id": message.get("MessageId"),
-                              **result}))
+            print(
+                json.dumps(
+                    {"trigger": "cloudtrail-event", "event_id": message.get("MessageId"), **result}
+                )
+            )
             code = result["summary"]["exit_code"]
             if code == 2:
                 logger.error("Incomplete scan for %s; event retained for retry/DLQ", account)
@@ -79,6 +82,8 @@ def poll_events(inventory, root, queue_url, profile=None, fail_on="HIGH", once=F
             try:
                 queue.delete_message(QueueUrl=queue_url, ReceiptHandle=message["ReceiptHandle"])
             except (ClientError, BotoCoreError) as exc:
-                raise DetectorError(f"Cannot acknowledge drift event: {error_message(exc)}") from exc
+                raise DetectorError(
+                    f"Cannot acknowledge drift event: {error_message(exc)}"
+                ) from exc
         if once:
             return final_code
