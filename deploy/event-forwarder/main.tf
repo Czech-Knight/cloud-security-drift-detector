@@ -25,9 +25,9 @@ resource "aws_iam_role" "forwarder" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -37,8 +37,8 @@ resource "aws_iam_role_policy" "forwarder" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = "events:PutEvents"
+      Effect   = "Allow"
+      Action   = "events:PutEvents"
       Resource = var.central_event_bus_arn
     }]
   })
@@ -48,10 +48,10 @@ resource "aws_cloudwatch_event_rule" "writes" {
   name = "forward-drift-security-writes"
   event_pattern = jsonencode({
     "detail-type" = ["AWS API Call via CloudTrail"]
-    source = ["aws.s3", "aws.ec2", "aws.iam"]
+    source        = ["aws.s3", "aws.ec2", "aws.iam"]
     detail = {
       eventSource = ["s3.amazonaws.com", "ec2.amazonaws.com", "iam.amazonaws.com"]
-      readOnly = [false]
+      readOnly    = [false]
     }
   })
 }
