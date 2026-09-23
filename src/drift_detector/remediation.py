@@ -36,7 +36,10 @@ def _run(arguments, timeout):
 def _verify_context(baseline, terraform_dir, profile):
     if profile is not None and (
         os.getenv("AWS_PROFILE") != profile
-        or any(os.getenv(key) for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"))
+        or any(
+            os.getenv(key)
+            for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
+        )
     ):
         raise DetectorError(
             "Set AWS_PROFILE to the chosen provisioner profile and unset static/temporary AWS "
