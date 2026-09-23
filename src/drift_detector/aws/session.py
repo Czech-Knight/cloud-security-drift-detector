@@ -16,7 +16,11 @@ CLIENT_CONFIG = Config(
 class AWSCollector:
     def __init__(self, baseline, profile=None, region=None, session=None):
         try:
-            self.session = session if session is not None else boto3.Session(profile_name=profile, region_name=region)
+            self.session = (
+                session
+                if session is not None
+                else boto3.Session(profile_name=profile, region_name=region)
+            )
             self.region = self.session.region_name or baseline.aws_region
             if self.region != baseline.aws_region:
                 raise DetectorError(
