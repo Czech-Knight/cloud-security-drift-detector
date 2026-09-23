@@ -70,21 +70,31 @@ def test_completed_fleet_drift_reaches_threshold(tmp_path, monkeypatch):
 
 
 def _event(account="123456789012", readonly=False, source="ec2.amazonaws.com"):
-    return json.dumps({
-        "detail-type": "AWS API Call via CloudTrail",
-        "account": account,
-        "region": "ap-southeast-2",
-        "detail": {"eventSource": source, "eventName": "AuthorizeSecurityGroupIngress",
-                   "readOnly": readonly},
-    })
+    return json.dumps(
+        {
+            "detail-type": "AWS API Call via CloudTrail",
+            "account": account,
+            "region": "ap-southeast-2",
+            "detail": {
+                "eventSource": source,
+                "eventName": "AuthorizeSecurityGroupIngress",
+                "readOnly": readonly,
+            },
+        }
+    )
 
 
 def test_only_relevant_successful_write_events_trigger():
     assert event_account(_event()) == "123456789012"
     assert event_account(_event(readonly=True)) is None
-    assert event_account(_event(source="ec2.amazonaws.com").replace(
-        '"readOnly": false', '"errorCode": "AccessDenied", "readOnly": false'
-    )) is None
+    assert (
+        event_account(
+            _event(source="ec2.amazonaws.com").replace(
+                '"readOnly": false', '"errorCode": "AccessDenied", "readOnly": false'
+            )
+        )
+        is None
+    )
     assert event_account(_event(source="lambda.amazonaws.com")) is None
     with pytest.raises(ValueError, match="valid account"):
         event_account(_event(account="not-an-account"))
@@ -179,6 +189,10 @@ def test_apply_failure_does_not_rebaseline(tmp_path, baseline, monkeypatch):
     monkeypatch.setattr("drift_detector.remediation.live_scan", lambda *_args: Drift())
     with pytest.raises(DetectorError, match="not clean"):
         apply_approved_plan(
-            base, directory, plan, hashlib.sha256(b"plan").hexdigest(),
-            "CHG-456", "Reviewer",
+            base,
+            directory,
+            plan,
+            hashlib.sha256(b"plan").hexdigest(),
+            "CHG-456",
+            "Reviewer",
         )
