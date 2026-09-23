@@ -1,0 +1,63 @@
+name: Cloud infrastructure security report
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/cloud-security-posture.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/cloud-security-posture.yml'
+  schedule:
+    - cron: '29 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkov:
+    name: Terraform static security assessment (advisory baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install scanner
+        run: python -m pip install 'checkov==3.3.19'
+      - name: Assess Terraform without AWS credentials
+        shell: bash
+        run: |
+          mkdir -p security-reports
+          set +e
+          checkov -d terraform --framework terraform -o json > security-reports/checkov.json
+          result=$?
+          set -e
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          data = json.loads(Path('security-reports/checkov.json').read_text())
+          checks = data.get('results') if isinstance(data, dict) else None
+          if not isinstance(checks, dict):
+              raise SystemExit('Checkov did not produce a valid findings report')
+          passed = len(checks.get('passed_checks', []))
+          failed = len(checks.get('failed_checks', []))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write(f'Checkov: {passed} passed, {failed} failed. Review the JSON report artifact.\n')
+              summary.write('Advisory baseline: failed security policies do not currently block merges.\n')
+          PY
+      - name: Save security assessment
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cloud-checkov-${{ github.run_id }}
+          path: security-reports/checkov.json
+          retention-days: 14
+          if-no-files-found: warn

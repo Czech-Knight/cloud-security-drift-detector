@@ -1,0 +1,35 @@
+name: Extended lint (MegaLinter)
+
+on:
+  schedule:
+    - cron: '41 5 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  megalinter:
+    name: Extended code and infrastructure lint (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oxsecurity/megalinter@v10.1.0
+        env:
+          VALIDATE_ALL_CODEBASE: 'true'
+          APPLY_FIXES: none
+          DISABLE_ERRORS: 'true'
+          ENABLE_LINTERS: PYTHON_RUFF,TERRAFORM_TFLINT,MARKDOWN_MARKDOWNLINT
+          REPORT_OUTPUT_FOLDER: megalinter-reports
+      - name: Archive lint report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: extended-lint-${{ github.run_id }}
+          path: megalinter-reports/
+          retention-days: 7
+          if-no-files-found: warn
