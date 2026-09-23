@@ -55,7 +55,7 @@ For a one-batch smoke test use --once --poll-seconds 0. Each trigger prints a JS
 
 ## 3. Review and remediate a detected change
 
-**Nothing in fleet scan or the SQS worker calls Terraform apply.** Use the provisioner identity and original state/workspace, not the central scanner identity. The approval must come from your organization's **external** change system or protected CI environment, with an independently reviewed plan. The CLI records an approver/ticket string but does not authenticate the approver or itself enforce two-person authorization.
+**Nothing in fleet scan or the SQS worker calls Terraform apply.** Use the provisioner identity and original state/workspace, not the central scanner identity. If using a named AWS profile for remediation, set AWS_PROFILE to that provisioner profile for both Terraform and Python, and unset AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN to avoid inconsistent credential chains. Supplying only the CLI --profile flag does not select Terraform provider credentials. The approval must come from your organization's **external** change system or protected CI environment, with an independently reviewed plan. The CLI records an approver/ticket string but does not authenticate the approver or itself enforce two-person authorization.
 
     python -m drift_detector remediate plan --baseline .baseline/security_baseline.json --terraform-dir terraform --plan-path .remediation/reconcile.tfplan
     terraform show .remediation/reconcile.tfplan
@@ -64,7 +64,7 @@ Review the entire plan, including any unrelated updates/destroys. The command re
 
     python -m drift_detector remediate apply --baseline .baseline/security_baseline.json --terraform-dir terraform --plan-path .remediation/reconcile.tfplan --approved-plan-sha256 APPROVED_64_HEX_DIGEST --approval-ticket CHG-1234 --approved-by REVIEWER_ID --confirm-apply
 
-Apply rejects a changed plan, missing approval metadata, wrong AWS account or wrong Terraform workspace. It applies the exact saved plan, then reads the live environment again. Remaining drift/incomplete reads fail verification; do not close the incident or regenerate a baseline to conceal them. Terraform plan files can contain secrets, are kept local at owner-only mode and must not be uploaded to public CI artifacts. An independent reviewer, protected plan store and approved workflow are required before calling this production change management. Terraform plans can grow stale; if Terraform refuses the saved plan, regenerate and reapprove a new one.
+Apply rejects a changed plan, missing approval metadata, wrong AWS account or wrong Terraform workspace. It also checks the saved plan's intended account/region/workspace against the reviewed baseline before any apply. It applies the exact saved plan, then reads the live environment again. Remaining drift/incomplete reads fail verification; do not close the incident or regenerate a baseline to conceal them. Terraform plan files can contain secrets, are kept local at owner-only mode and must not be uploaded to public CI artifacts. An independent reviewer, protected plan store and approved workflow are required before calling this production change management. Terraform plans can grow stale; if Terraform refuses the saved plan, regenerate and reapprove a new one.
 
 ## Scope and outstanding production requirements
 
