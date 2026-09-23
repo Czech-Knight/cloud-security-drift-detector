@@ -49,7 +49,7 @@ The forwarder sends matching EventBridge CloudTrail management-write events to t
 
 Run a worker under a central short-lived role, on a persistent supervised host/container with secure logs:
 
-    python -m drift_detector events --inventory .baseline/fleet.json --queue-url https://sqs.ap-southeast-2.amazonaws.com/111111111111/drift-security-events
+    python -m drift_detector events --inventory .baseline/fleet.json --queue-url https://sqs.ap-southeast-2.amazonaws.com/111111111111/drift-security-events --queue-region ap-southeast-2
 
 For a one-batch smoke test use --once --poll-seconds 0. Each trigger prints a JSON fleet report tagged cloudtrail-event; ship this output to your protected incident/alert platform. An unhandled/incomplete event remains in SQS for retry and then moves to the DLQ (after the configured receive-count threshold). The worker uses a 900-second visibility timeout: size your fleet batches/processing time accordingly and make downstream alerts idempotent by event ID. Set a bounded retry/redrive policy, monitor oldest message age and DLQ depth, and use an independent periodic scan to cover lost events.
 
