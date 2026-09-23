@@ -10,10 +10,10 @@ from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from drift_detector.aws.common import error_message
-from drift_detector.aws.session import AWSCollector, CLIENT_CONFIG
+from drift_detector.aws.session import CLIENT_CONFIG, AWSCollector
 from drift_detector.baseline.loader import load_baseline
 from drift_detector.engine.scanner import DriftScanner
-from drift_detector.models import SEVERITIES, DetectorError
+from drift_detector.models import DetectorError
 
 
 class Target(BaseModel):
